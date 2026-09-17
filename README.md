@@ -44,10 +44,20 @@ Replace `<resource>` and `deepseek-v3-0324` in the files with your own resource 
 
 `compare.py` and `foundry_client.py` read the resource name from `FOUNDRY_RESOURCE`, a variable name chosen for this lab rather than an Azure convention.
 
+macOS or Linux:
+
 ```bash
 export FOUNDRY_RESOURCE="your-resource-name"
 export AZURE_INFERENCE_CREDENTIAL="your-key"   # omit to use keyless auth
 cd lab && python compare.py
+```
+
+Windows PowerShell:
+
+```powershell
+$env:FOUNDRY_RESOURCE = "your-resource-name"
+$env:AZURE_INFERENCE_CREDENTIAL = "your-key"   # omit to use keyless auth
+cd lab; python compare.py
 ```
 
 Never commit keys. `.env` is already in `.gitignore`.
