@@ -1,0 +1,3 @@
+# Install the latest versions: pip install --upgrade -r requirements.txt
+openai
+azure-identity

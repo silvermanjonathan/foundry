@@ -1,0 +1,1014 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Calling Foundry models from Python: a course module</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F2F4F6; --surface:#FFFFFF; --ink:#1B2330; --muted:#566172; --rule:#D5DBE3;
+  --code-bg:#EAEEF3; --code-ink:#1B2330;
+  --res:#0B5C8A; --route:#6A4C9C; --dep:#8A5A00;
+  --ok:#2E7D4F; --ok-bg:#E4F2E9; --bad:#B3261E; --bad-bg:#FBE9E7;
+  --t-kw:#6A4C9C; --t-str:#2E6B3F; --t-com:#6B7684; --t-fn:#0B5C8A; --t-num:#8A5A00;
+  --sans:"Atkinson Hyperlegible", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --mono:"JetBrains Mono", ui-monospace, "SF Mono", Consolas, "Liberation Mono", monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#151A21; --surface:#1D242D; --ink:#E6EAF0; --muted:#9AA5B4; --rule:#2E3743;
+    --code-bg:#10151B; --code-ink:#DCE2EA;
+    --res:#6CB8E6; --route:#B79BE8; --dep:#E0B45A;
+    --ok:#6FCF97; --ok-bg:#16301F; --bad:#F28B82; --bad-bg:#3A1B19;
+    --t-kw:#B79BE8; --t-str:#8FD19E; --t-com:#7F8A99; --t-fn:#6CB8E6; --t-num:#E0B45A;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#151A21; --surface:#1D242D; --ink:#E6EAF0; --muted:#9AA5B4; --rule:#2E3743;
+  --code-bg:#10151B; --code-ink:#DCE2EA;
+  --res:#6CB8E6; --route:#B79BE8; --dep:#E0B45A;
+  --ok:#6FCF97; --ok-bg:#16301F; --bad:#F28B82; --bad-bg:#3A1B19;
+  --t-kw:#B79BE8; --t-str:#8FD19E; --t-com:#7F8A99; --t-fn:#6CB8E6; --t-num:#E0B45A;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:1.0625rem;line-height:1.6}
+a{color:var(--res)}
+a:focus-visible,button:focus-visible,input:focus-visible,summary:focus-visible,label:focus-within{outline:3px solid var(--res);outline-offset:2px;border-radius:3px}
+code{font-family:var(--mono);font-size:.88em;background:var(--code-bg);padding:.1em .35em;border-radius:4px}
+img,svg{max-width:100%}
+
+.layout{display:grid;grid-template-columns:17rem minmax(0,1fr);max-width:78rem;margin:0 auto}
+nav.toc{position:sticky;top:0;align-self:start;height:100vh;overflow:auto;padding:2rem 1.25rem 2rem 1.5rem;border-right:1px solid var(--rule)}
+.toc h2{font-size:1rem;margin:0 0 .25rem}
+.toc .progress{font-size:.9rem;color:var(--muted);margin:0 0 .75rem}
+.bar{height:6px;background:var(--rule);border-radius:3px;overflow:hidden;margin-bottom:1.25rem}
+.bar span{display:block;height:100%;width:0;background:var(--ok);transition:width .3s}
+.toc ol{list-style:none;margin:0;padding:0}
+.toc li a{display:grid;grid-template-columns:1.6rem 1fr 1rem;gap:.25rem;align-items:baseline;padding:.4rem .5rem;border-radius:6px;text-decoration:none;color:var(--ink);font-size:.95rem;line-height:1.35}
+.toc li a:hover{background:var(--surface)}
+.toc li a .n{font-family:var(--mono);font-size:.8rem;color:var(--muted)}
+.toc li a .chk{color:var(--ok);font-weight:700}
+.toc .sep{margin:.75rem 0 .25rem;border-top:1px solid var(--rule)}
+
+main{padding:0 2.5rem 5rem;min-width:0}
+.col{max-width:44rem}
+
+.hero{padding:3.5rem 0 2.5rem;border-bottom:1px solid var(--rule)}
+.hero h1{font-size:clamp(2.1rem,4.5vw,3.1rem);line-height:1.08;letter-spacing:-.015em;margin:0 0 1rem;max-width:18ch}
+.hero .lede{font-size:1.2rem;color:var(--muted);max-width:40rem;margin:0 0 2.25rem}
+.anatomy{display:flex;flex-wrap:wrap;align-items:flex-start;gap:0 .1rem;font-family:var(--mono);font-size:clamp(1rem,2.4vw,1.5rem);background:var(--surface);border:1px solid var(--rule);border-radius:10px;padding:1.5rem 1.5rem 1.1rem}
+.anatomy .seg{display:flex;flex-direction:column}
+.anatomy .seg b{font-weight:400;white-space:nowrap;padding-bottom:.35rem}
+.anatomy .seg small{font-family:var(--sans);font-size:.8rem;line-height:1.3;color:var(--muted);border-top:3px solid transparent;padding-top:.35rem;max-width:12rem}
+.anatomy .gap{width:1.6rem}
+.anatomy .res b{color:var(--res)} .anatomy .res small{border-color:var(--res)}
+.anatomy .route b{color:var(--route)} .anatomy .route small{border-color:var(--route)}
+.anatomy .dep b{color:var(--dep)} .anatomy .dep small{border-color:var(--dep)}
+.hero .meta{margin:1.25rem 0 0;color:var(--muted);font-size:.95rem}
+
+section.lesson{padding:3rem 0 2rem;border-bottom:1px solid var(--rule);scroll-margin-top:1rem}
+.lesson-head{display:flex;gap:1rem;align-items:baseline}
+.lesson-head .num{font-family:var(--mono);font-size:1rem;color:var(--muted);min-width:1.8rem}
+.lesson h2{font-size:1.75rem;line-height:1.2;margin:0 0 .25rem}
+.lesson .goal{color:var(--muted);margin:0 0 1.5rem;padding-left:2.8rem}
+.lesson h3{font-size:1.2rem;margin:2rem 0 .5rem}
+.lesson p,.lesson ul,.lesson ol{max-width:44rem}
+.lesson li{margin:.3rem 0}
+
+.seg-res{color:var(--res);font-weight:600}
+.seg-route{color:var(--route);font-weight:600}
+.seg-dep{color:var(--dep);font-weight:600}
+
+figure.code{margin:1.25rem 0;max-width:46rem;position:relative}
+figure.code figcaption{font-size:.85rem;color:var(--muted);margin-bottom:.35rem;display:flex;justify-content:space-between;align-items:center;gap:1rem}
+pre.code{margin:0;background:var(--code-bg);color:var(--code-ink);border-radius:8px;padding:1rem 0;overflow-x:auto;font-family:var(--mono);font-size:.86rem;line-height:1.6;counter-reset:ln;border:1px solid var(--rule)}
+pre.code .ln{display:block;padding:0 1rem 0 0;white-space:pre}
+pre.code.numbered .ln::before{counter-increment:ln;content:counter(ln);display:inline-block;width:2.6rem;padding-right:1rem;text-align:right;color:var(--t-com);user-select:none}
+pre.code:not(.numbered) .ln{padding-left:1rem}
+.t-kw{color:var(--t-kw)} .t-str{color:var(--t-str)} .t-com{color:var(--t-com);font-style:italic} .t-fn{color:var(--t-fn)} .t-num{color:var(--t-num)}
+button.copy{font:inherit;font-size:.8rem;background:none;border:1px solid var(--rule);color:var(--ink);border-radius:5px;padding:.15rem .6rem;cursor:pointer}
+button.copy:hover{background:var(--surface)}
+
+dl.notes{display:grid;grid-template-columns:auto 1fr;gap:.45rem 1rem;max-width:44rem;margin:1rem 0 1.5rem;font-size:.97rem}
+dl.notes dt{font-family:var(--mono);font-size:.82rem;color:var(--muted);padding-top:.15rem;white-space:nowrap}
+dl.notes dd{margin:0}
+
+.predict{background:var(--surface);border:1px solid var(--rule);border-left:4px solid var(--route);border-radius:6px;padding:1rem 1.25rem;margin:1.5rem 0;max-width:44rem}
+.predict p.q{margin:0 0 .5rem;font-weight:700}
+.predict summary{cursor:pointer;color:var(--route);font-weight:700}
+.predict details p{margin:.6rem 0 0}
+
+.aside{border:1px solid var(--rule);border-radius:6px;padding:1rem 1.25rem;margin:1.5rem 0;max-width:44rem;background:var(--surface)}
+.aside h4{margin:0 0 .4rem;font-size:1rem}
+.aside p,.aside ul{margin:.3rem 0}
+.split{display:grid;grid-template-columns:1fr 1fr;gap:1rem;max-width:46rem;margin:1.25rem 0}
+.split > div{background:var(--surface);border:1px solid var(--rule);border-radius:6px;padding:.9rem 1.1rem}
+.split h4{margin:0 0 .35rem;font-size:1rem}
+.split ul{margin:0;padding-left:1.1rem;font-size:.95rem}
+
+/* Lesson 1 diagram */
+.org{display:grid;grid-template-columns:minmax(9rem,12rem) 2.5rem 1fr;align-items:center;gap:.5rem;max-width:46rem;margin:1.5rem 0}
+.org-app{background:var(--surface);border:2px solid var(--ink);border-radius:8px;padding:.9rem;text-align:center;font-weight:700}
+.org-app small{display:block;font-weight:400;color:var(--muted);font-size:.85rem}
+.org-arrow{text-align:center;font-size:1.6rem;color:var(--muted)}
+.org-res{border:2px dashed var(--res);border-radius:10px;padding:.9rem}
+.org-res > p{margin:0 0 .6rem;font-size:.9rem;color:var(--res);font-weight:700}
+.deps{display:grid;gap:.5rem}
+.dep-card{background:var(--surface);border:1px solid var(--rule);border-left:4px solid var(--dep);border-radius:6px;padding:.55rem .8rem;font-size:.9rem}
+.dep-card b{font-family:var(--mono);font-size:.85rem;color:var(--dep)}
+.dep-card dl{display:grid;grid-template-columns:auto 1fr;gap:.1rem .8rem;margin:.35rem 0 0}
+.dep-card dt{color:var(--muted)} .dep-card dd{margin:0}
+.dep-card span.m{color:var(--muted)}
+.fig-note{font-size:.85rem;color:var(--muted);margin-top:-.75rem}
+
+/* URL builder */
+.builder{background:var(--surface);border:1px solid var(--rule);border-radius:10px;padding:1.25rem;max-width:46rem;margin:1.5rem 0}
+.builder h4{margin:0 0 .75rem;font-size:1.05rem}
+.fields{display:grid;grid-template-columns:1fr 1fr;gap:.9rem;margin-bottom:.9rem}
+.fields label{display:block;font-size:.9rem;font-weight:700;margin-bottom:.25rem}
+.fields label i{font-style:normal;display:inline-block;width:.7rem;height:.7rem;border-radius:2px;margin-right:.35rem;vertical-align:middle}
+.fields input[type=text]{width:100%;font-family:var(--mono);font-size:.9rem;padding:.5rem .6rem;border:1px solid var(--rule);border-radius:6px;background:var(--bg);color:var(--ink)}
+.radios{display:flex;gap:1.25rem;flex-wrap:wrap;margin:.25rem 0 .9rem;font-size:.95rem}
+.radios label{display:flex;gap:.4rem;align-items:center;cursor:pointer}
+.builder .warn{font-size:.9rem;color:var(--dep);min-height:1.4em;margin:.25rem 0}
+
+/* Lab */
+.task{border:1px solid var(--rule);border-radius:8px;background:var(--surface);padding:1rem 1.25rem;margin:1.25rem 0;max-width:46rem}
+.task-top{display:flex;gap:.75rem;align-items:flex-start}
+.task-top input{width:1.2rem;height:1.2rem;margin-top:.3rem;accent-color:var(--ok);flex:none}
+.task h4{margin:0;font-size:1.05rem}
+.task p{margin:.4rem 0}
+.task details{margin-top:.6rem}
+.task summary{cursor:pointer;font-weight:700;color:var(--res)}
+.task.done h4{text-decoration:line-through;text-decoration-color:var(--ok)}
+
+table.trouble{border-collapse:collapse;width:100%;font-size:.93rem;min-width:40rem}
+.table-wrap{overflow-x:auto;max-width:52rem;margin:1.25rem 0;border:1px solid var(--rule);border-radius:8px;background:var(--surface)}
+table.trouble th,table.trouble td{text-align:left;vertical-align:top;padding:.65rem .8rem;border-bottom:1px solid var(--rule)}
+table.trouble th{font-size:.85rem;color:var(--muted);font-weight:700}
+table.trouble tr:last-child td{border-bottom:0}
+table.trouble td:first-child{font-family:var(--mono);font-size:.82rem;white-space:nowrap}
+
+.done-row{margin-top:2rem;display:flex;align-items:center;gap:1rem}
+button.mark{font:inherit;font-weight:700;border:2px solid var(--ok);color:var(--ok);background:transparent;border-radius:6px;padding:.45rem 1rem;cursor:pointer}
+button.mark[aria-pressed="true"]{background:var(--ok);color:var(--surface)}
+
+/* Quiz */
+.quiz-q{background:var(--surface);border:1px solid var(--rule);border-radius:8px;padding:1rem 1.25rem;margin:1rem 0;max-width:46rem}
+.quiz-q fieldset{border:0;margin:0;padding:0}
+.quiz-q legend{font-weight:700;padding:0;margin-bottom:.6rem}
+.quiz-q legend .qn{font-family:var(--mono);font-size:.85rem;color:var(--muted);margin-right:.5rem;font-weight:400}
+.opt{display:flex;gap:.6rem;align-items:flex-start;padding:.45rem .6rem;border-radius:6px;cursor:pointer;border:1px solid transparent}
+.opt:hover{background:var(--bg)}
+.opt input{margin-top:.35rem;flex:none}
+.opt.correct{background:var(--ok-bg);border-color:var(--ok)}
+.opt.wrong{background:var(--bad-bg);border-color:var(--bad)}
+.why{margin:.6rem 0 0;font-size:.95rem;display:none}
+.why.show{display:block}
+.why strong.ok{color:var(--ok)} .why strong.no{color:var(--bad)}
+.score{font-size:1.1rem;font-weight:700;margin:1rem 0}
+button.plain{font:inherit;border:1px solid var(--rule);background:var(--surface);color:var(--ink);border-radius:6px;padding:.4rem .9rem;cursor:pointer}
+
+.cheat{display:grid;grid-template-columns:1fr 1fr;gap:1rem;max-width:52rem}
+.cheat > div{background:var(--surface);border:1px solid var(--rule);border-radius:8px;padding:1rem 1.2rem}
+.cheat h4{margin:0 0 .4rem}
+.cheat ul{margin:0;padding-left:1.1rem;font-size:.95rem}
+footer{padding:2.5rem 0;color:var(--muted);font-size:.9rem;max-width:44rem}
+
+@media (max-width: 900px){
+  .layout{grid-template-columns:1fr}
+  nav.toc{position:static;height:auto;border-right:0;border-bottom:1px solid var(--rule);padding:1.25rem}
+  .toc ol{display:grid;grid-template-columns:1fr 1fr;gap:0 .5rem}
+  main{padding:0 1.25rem 4rem}
+  .fields,.split,.cheat{grid-template-columns:1fr}
+  .org{grid-template-columns:1fr}
+  .org-arrow{transform:rotate(90deg)}
+  .lesson .goal{padding-left:0}
+}
+@media (max-width: 520px){ .toc ol{grid-template-columns:1fr} }
+</style>
+</head>
+<body>
+<div class="layout">
+
+<nav class="toc" aria-label="Module contents">
+  <h2>Module contents</h2>
+  <p class="progress" id="progress-text">0 of 8 lessons done</p>
+  <div class="bar" aria-hidden="true"><span id="progress-bar"></span></div>
+  <ol id="toc-list">
+    <li><a href="#l1"><span class="n">1</span><span>How Foundry organizes models</span><span class="chk" data-chk="l1"></span></a></li>
+    <li><a href="#l2"><span class="n">2</span><span>Anatomy of the endpoint</span><span class="chk" data-chk="l2"></span></a></li>
+    <li><a href="#l3"><span class="n">3</span><span>Set up Python</span><span class="chk" data-chk="l3"></span></a></li>
+    <li><a href="#l4"><span class="n">4</span><span>Call with an API key</span><span class="chk" data-chk="l4"></span></a></li>
+    <li><a href="#l5"><span class="n">5</span><span>Call without a key</span><span class="chk" data-chk="l5"></span></a></li>
+    <li><a href="#l6"><span class="n">6</span><span>Responses and the fallback</span><span class="chk" data-chk="l6"></span></a></li>
+    <li><a href="#l7"><span class="n">7</span><span>Lab: a reusable client</span><span class="chk" data-chk="l7"></span></a></li>
+    <li><a href="#l8"><span class="n">8</span><span>Troubleshooting</span><span class="chk" data-chk="l8"></span></a></li>
+  </ol>
+  <div class="sep"></div>
+  <ol>
+    <li><a href="#quiz"><span class="n"></span><span>Knowledge check</span><span class="chk" id="quiz-chk"></span></a></li>
+    <li><a href="#cheat"><span class="n"></span><span>Cheat sheet</span><span></span></a></li>
+  </ol>
+</nav>
+
+<main>
+<header class="hero">
+  <h1>Calling Foundry models from Python</h1>
+  <p class="lede">One endpoint, one credential, many models. By the end of this module you can point the OpenAI Python SDK at a Microsoft Foundry resource, sign in with a key or with Microsoft Entra ID, and switch models by changing a single string.</p>
+  <div class="anatomy" role="img" aria-label="The three parts of every call: your resource name in the URL, the /openai/v1/ route, and the deployment name passed as the model argument.">
+    <div class="seg"><b>https://</b><small>&nbsp;</small></div>
+    <div class="seg res"><b>&lt;resource&gt;</b><small>Your Foundry resource name</small></div>
+    <div class="seg"><b>.openai.azure.com</b><small>&nbsp;</small></div>
+    <div class="seg route"><b>/openai/v1/</b><small>The v1 route, so no api-version</small></div>
+    <div class="gap"></div>
+    <div class="seg dep"><b>model="&lt;deployment&gt;"</b><small>The deployment name picks which model runs</small></div>
+  </div>
+  <p class="meta">About 75 minutes including the lab. These three colors mark the same three parts in every code sample below.</p>
+</header>
+
+<section class="lesson" id="overview" aria-labelledby="ov-h" style="padding-top:2.5rem">
+  <div class="col">
+    <h2 id="ov-h" style="font-size:1.4rem">What you will be able to do</h2>
+    <ol>
+      <li>Explain what a deployment is and which settings it carries.</li>
+      <li>Build the correct v1 base URL for any Foundry resource and say why it needs no <code>api-version</code>.</li>
+      <li>Call a model from Python with an API key stored in an environment variable.</li>
+      <li>Call the same model with keyless Microsoft Entra ID authentication, and explain why production code should prefer it.</li>
+      <li>Use the Responses API, detect <code>400 Model not supported</code>, and fall back to Chat Completions.</li>
+      <li>Diagnose the common errors you hit on a first run.</li>
+    </ol>
+    <h3>Before you start</h3>
+    <p>You need an Azure subscription, a Foundry resource with at least one model deployment, and Python 3 on your machine. For lesson 5 you also need the Azure CLI and a role assignment on the resource that lets you run inference. If you have no deployment yet, Microsoft's guide <a href="https://learn.microsoft.com/en-us/azure/foundry/foundry-models/how-to/create-model-deployments">Add and configure model deployments</a> walks through it. Lessons 1, 2, 6 and 8 work without any Azure access, so you can read ahead.</p>
+  </div>
+</section>
+
+<!-- LESSON 1 -->
+<section class="lesson" id="l1" aria-labelledby="l1-h">
+  <div class="lesson-head"><span class="num">1</span><h2 id="l1-h">How Foundry organizes models</h2></div>
+  <p class="goal">Goal: know what you are actually naming when you pass <code>model=</code>.</p>
+
+  <p>Foundry puts models from many providers behind a single endpoint that uses one set of credentials. Your code never talks to "DeepSeek" or "Llama" directly. It talks to your resource, and names a <strong>deployment</strong>.</p>
+  <p>A deployment is an alias. It gives a model a name you choose and attaches settings to it. Every deployment defines:</p>
+  <ul>
+    <li>the model name and the model version,</li>
+    <li>a provisioning or capacity type,</li>
+    <li>a content filtering configuration,</li>
+    <li>a rate limiting configuration.</li>
+  </ul>
+  <p>The last three vary with the model you choose. One resource can hold many deployments.</p>
+
+  <div class="org" role="img" aria-label="A Python app with one client and one credential connects to a Foundry resource that contains three deployments.">
+    <div class="org-app">Your Python app<small>one client, one credential</small></div>
+    <div class="org-arrow" aria-hidden="true">→</div>
+    <div class="org-res">
+      <p>Foundry resource: contoso-ai</p>
+      <div class="deps">
+        <div class="dep-card"><b>deepseek-v3-0324</b>
+          <dl><dt>Model</dt><dd>DeepSeek-V3, version 0324</dd><dt>Capacity</dt><dd>a deployment type</dd><dt>Filters</dt><dd>a content filter policy</dd><dt>Limits</dt><dd>a rate limit</dd></dl>
+        </div>
+        <div class="dep-card"><b>chat-main</b> <span class="m">an OpenAI GPT model, with its own settings</span></div>
+        <div class="dep-card"><b>llama-summaries</b> <span class="m">a Llama model, with its own settings</span></div>
+      </div>
+    </div>
+  </div>
+  <p class="fig-note">Deployment names here are illustrative. Yours are whatever you or your admin chose.</p>
+
+  <h3>Two facts to keep</h3>
+  <p><strong>Billing follows use.</strong> You pay for inference run on a deployment, not for the deployment existing. Creating a second deployment to experiment costs nothing until you call it.</p>
+  <p><strong>Deployments are Azure resources.</strong> That means Azure Policy applies to them, so an organization can govern what gets deployed the same way it governs any other Azure resource. If you are rolling AI out across a team, this is where guardrails live.</p>
+
+  <div class="predict">
+    <p class="q">Predict: a teammate renames the deployment <code>chat-main</code> to <code>chat-prod</code>. What in your Python code must change?</p>
+    <details><summary>Show answer</summary>
+      <p>Only the string you pass as <code>model</code>. The base URL and the credential stay the same, because they point at the resource, not at a deployment. This is also why you can switch between models from different providers without rewriting code.</p>
+    </details>
+  </div>
+
+  <div class="done-row"><button class="mark" data-lesson="l1" aria-pressed="false">Mark lesson 1 done</button></div>
+</section>
+
+<!-- LESSON 2 -->
+<section class="lesson" id="l2" aria-labelledby="l2-h">
+  <div class="lesson-head"><span class="num">2</span><h2 id="l2-h">Anatomy of the endpoint</h2></div>
+  <p class="goal">Goal: write the correct <code>base_url</code> from memory.</p>
+
+  <p>Every Azure OpenAI endpoint starts from the same base: <code>https://<span class="seg-res">&lt;resource-name&gt;</span>.openai.azure.com</code>. This endpoint exposes the full feature set of OpenAI models, including assistants, threads, files and batch inference, and it can also serve non-OpenAI models.</p>
+
+  <h3>Two ways to reach a deployment</h3>
+  <div class="split">
+    <div>
+      <h4>Per-deployment route</h4>
+      <ul>
+        <li>Append <code>/deployments/&lt;deployment-name&gt;</code> to the base URL.</li>
+        <li>Each deployment has its own URL.</li>
+        <li>You still use one authentication method across all of them.</li>
+      </ul>
+    </div>
+    <div>
+      <h4>v1 route (used in this module)</h4>
+      <ul>
+        <li>Call <code class="seg-route">/openai/v1/</code> on the base URL.</li>
+        <li>Put the deployment name in the <code class="seg-dep">model</code> field of each request.</li>
+        <li>Versioning is implicit, so you do not pass <code>api-version</code>.</li>
+      </ul>
+    </div>
+  </div>
+  <p>The v1 route is what lets you use the plain <code>OpenAI</code> client class from the <code>openai</code> package. You give it a <code>base_url</code> and a credential, and it behaves as it would against any OpenAI-compatible API.</p>
+  <p>If you don't know your resource name, find it in the Azure portal or run <code>az cognitiveservices account list</code>.</p>
+
+  <div class="builder">
+    <h4>Try it: build your client</h4>
+    <div class="fields">
+      <div>
+        <label for="b-res"><i style="background:var(--res)"></i>Resource name</label>
+        <input type="text" id="b-res" placeholder="contoso-ai" autocomplete="off" spellcheck="false">
+      </div>
+      <div>
+        <label for="b-dep"><i style="background:var(--dep)"></i>Deployment name</label>
+        <input type="text" id="b-dep" placeholder="deepseek-v3-0324" autocomplete="off" spellcheck="false">
+      </div>
+    </div>
+    <div class="radios" role="radiogroup" aria-label="Authentication">
+      <label><input type="radio" name="b-auth" value="key" checked> API key</label>
+      <label><input type="radio" name="b-auth" value="keyless"> Keyless (Entra ID)</label>
+    </div>
+    <p class="warn" id="b-warn" aria-live="polite"></p>
+    <figure class="code">
+      <figcaption><span>Generated code</span><button class="copy" data-copy="b-out">Copy</button></figcaption>
+      <pre class="code numbered" id="b-out"></pre>
+    </figure>
+  </div>
+
+  <div class="predict">
+    <p class="q">Predict: which of these is a correct v1 <code>base_url</code> for a resource named <code>contoso-ai</code>?</p>
+    <ol type="A" style="margin:.25rem 0 .5rem">
+      <li><code>https://contoso-ai.openai.azure.com/openai/v1/?api-version=2024-10-21</code></li>
+      <li><code>https://contoso-ai.openai.azure.com/openai/v1/</code></li>
+      <li><code>https://contoso-ai.openai.azure.com/deployments/chat-main/openai/v1/</code></li>
+    </ol>
+    <details><summary>Show answer</summary>
+      <p><strong>B.</strong> A adds an <code>api-version</code>, which the v1 route doesn't take. C mixes the per-deployment route into the v1 URL. With v1, the deployment name travels in <code>model</code>, never in the path.</p>
+    </details>
+  </div>
+
+  <div class="done-row"><button class="mark" data-lesson="l2" aria-pressed="false">Mark lesson 2 done</button></div>
+</section>
+
+<!-- LESSON 3 -->
+<section class="lesson" id="l3" aria-labelledby="l3-h">
+  <div class="lesson-head"><span class="num">3</span><h2 id="l3-h">Set up Python</h2></div>
+  <p class="goal">Goal: an isolated environment with the two packages this module uses.</p>
+
+  <p>You need the <code>openai</code> package for every call. You need <code>azure-identity</code> only for keyless authentication in lesson 5. Install both now so you don't have to come back.</p>
+  <figure class="code">
+    <figcaption><span>Terminal, macOS or Linux</span><button class="copy" data-copy="setup_sh">Copy</button></figcaption>
+    <pre class="code" data-code="setup_sh" data-lang="sh" id="setup_sh"></pre>
+  </figure>
+  <figure class="code">
+    <figcaption><span>Terminal, Windows PowerShell</span><button class="copy" data-copy="setup_ps">Copy</button></figcaption>
+    <pre class="code" data-code="setup_ps" data-lang="sh" id="setup_ps"></pre>
+  </figure>
+  <p>The <code>--upgrade</code> flag matters. The v1 route and the Responses API rely on a recent SDK, and older virtual environments often carry an outdated <code>openai</code> version.</p>
+
+  <div class="aside">
+    <h4>For lesson 5 only</h4>
+    <p>Install the <a href="https://learn.microsoft.com/en-us/cli/azure/install-azure-cli">Azure CLI</a> and run <code>az login</code>. On your own machine, that sign-in is what keyless authentication uses.</p>
+  </div>
+
+  <div class="done-row"><button class="mark" data-lesson="l3" aria-pressed="false">Mark lesson 3 done</button></div>
+</section>
+
+<!-- LESSON 4 -->
+<section class="lesson" id="l4" aria-labelledby="l4-h">
+  <div class="lesson-head"><span class="num">4</span><h2 id="l4-h">Call with an API key</h2></div>
+  <p class="goal">Goal: a working first call, with the key kept out of your code.</p>
+
+  <p>An API key from your Foundry resource is the fastest way to a first response. Copy a key from your resource's keys page in the portal and put it in an environment variable called <code>AZURE_INFERENCE_CREDENTIAL</code>.</p>
+  <figure class="code">
+    <figcaption><span>Set the key for this terminal session</span><button class="copy" data-copy="env_sh">Copy</button></figcaption>
+    <pre class="code" data-code="env_sh" data-lang="sh" id="env_sh"></pre>
+  </figure>
+
+  <p>Now save this as <code>first_call.py</code>, replace the resource and deployment names, and run <code>python first_call.py</code>.</p>
+  <figure class="code">
+    <figcaption><span>first_call.py</span><button class="copy" data-copy="key_call">Copy</button></figcaption>
+    <pre class="code numbered" data-code="key_call" data-lang="py" id="key_call"></pre>
+  </figure>
+
+  <h3>Line by line</h3>
+  <dl class="notes">
+    <dt>line 2</dt><dd>You import the standard <code>OpenAI</code> class, not a special Azure class. The v1 route makes the resource look like any OpenAI-compatible API.</dd>
+    <dt>line 5</dt><dd>The base URL names your <span class="seg-res">resource</span> and ends in the <span class="seg-route">/openai/v1/</span> route. There is no <code>api-version</code> anywhere.</dd>
+    <dt>line 6</dt><dd>The key comes from the environment, so it never lands in source control.</dd>
+    <dt>line 9</dt><dd><code>responses.create</code> calls the Responses API, which carries the latest inference features.</dd>
+    <dt>line 10</dt><dd>The <span class="seg-dep">deployment name</span> goes in <code>model</code>. Swap this string to use a different model.</dd>
+    <dt>line 14</dt><dd><code>output_text</code> is a convenience property that gathers the text of the response into one string.</dd>
+  </dl>
+
+  <div class="split">
+    <div>
+      <h4>Why keys are convenient</h4>
+      <ul><li>Nothing to configure beyond copying a string.</li><li>Good for a quick experiment on your own resource.</li></ul>
+    </div>
+    <div>
+      <h4>Why keys are risky</h4>
+      <ul><li>A key grants full access to the resource.</li><li>You can't scope it to one person or one action.</li><li>You have to rotate it by hand.</li></ul>
+    </div>
+  </div>
+  <p>Microsoft's guidance is direct: for production workloads, use keyless authentication. That is lesson 5.</p>
+
+  <div class="predict">
+    <p class="q">Predict: you open a new terminal and run <code>first_call.py</code> without setting the variable again. What happens, and when?</p>
+    <details><summary>Show answer</summary>
+      <p>Python raises <code>KeyError: 'AZURE_INFERENCE_CREDENTIAL'</code> on line 6, before any network request is made. Environment variables set with <code>export</code> or <code>$env:</code> last only for that terminal session. The error is useful: it fails early and names exactly what is missing.</p>
+    </details>
+  </div>
+
+  <div class="done-row"><button class="mark" data-lesson="l4" aria-pressed="false">Mark lesson 4 done</button></div>
+</section>
+
+<!-- LESSON 5 -->
+<section class="lesson" id="l5" aria-labelledby="l5-h">
+  <div class="lesson-head"><span class="num">5</span><h2 id="l5-h">Call without a key</h2></div>
+  <p class="goal">Goal: authenticate with Microsoft Entra ID and understand what each object does.</p>
+
+  <p>Foundry deployments support keyless authorization through Microsoft Entra ID. Instead of a shared secret, requests carry a short-lived token that proves who is calling. Access is tied to identities, which you can scope, audit and revoke.</p>
+
+  <h3>Three steps</h3>
+  <ol>
+    <li><strong>Get access.</strong> Someone with rights on the resource configures it for Entra ID and grants your identity permission to run inference. Follow <a href="https://learn.microsoft.com/en-us/azure/foundry/foundry-models/how-to/configure-entra-id">Configure keyless authentication with Microsoft Entra ID</a> for the exact roles.</li>
+    <li><strong>Sign in.</strong> Run <code>az login</code> in your terminal.</li>
+    <li><strong>Swap the credential in your code.</strong> Everything else stays the same.</li>
+  </ol>
+
+  <figure class="code">
+    <figcaption><span>keyless_call.py</span><button class="copy" data-copy="keyless_call">Copy</button></figcaption>
+    <pre class="code numbered" data-code="keyless_call" data-lang="py" id="keyless_call"></pre>
+  </figure>
+
+  <h3>Line by line</h3>
+  <dl class="notes">
+    <dt>line 2</dt><dd>Both helpers come from <code>azure-identity</code>.</dd>
+    <dt>line 4</dt><dd><code>get_bearer_token_provider</code> wraps the credential in a function that returns a valid token when called, fetching a new one as needed. You never handle expiry yourself.</dd>
+    <dt>line 5</dt><dd><code>DefaultAzureCredential</code> tries several sign-in sources in turn. On your laptop it typically finds your Azure CLI login. Running inside Azure with a managed identity, it finds that instead.</dd>
+    <dt>line 6</dt><dd>The scope <code>https://ai.azure.com/.default</code> says which service the token is for. A token for the wrong scope is rejected.</dd>
+    <dt>line 11</dt><dd>You pass the <em>function</em> as <code>api_key</code>, not a string. The SDK calls it to get a token for its requests.</dd>
+  </dl>
+
+  <p>Compare this file with <code>first_call.py</code>. The <span class="seg-res">resource</span>, the <span class="seg-route">route</span>, the <span class="seg-dep">deployment</span> and the <code>responses.create</code> call are identical. Only the credential changed.</p>
+
+  <div class="predict">
+    <p class="q">Predict: you deploy <code>keyless_call.py</code> unchanged to an Azure service that has a managed identity, and that identity has been granted inference access on the resource. What do you have to edit?</p>
+    <details><summary>Show answer</summary>
+      <p>Nothing. <code>DefaultAzureCredential</code> finds the managed identity at runtime, the same way it found your CLI login locally. No secret needs to be copied into the service's configuration. This is a big part of why keyless is the production default.</p>
+    </details>
+  </div>
+
+  <div class="done-row"><button class="mark" data-lesson="l5" aria-pressed="false">Mark lesson 5 done</button></div>
+</section>
+
+<!-- LESSON 6 -->
+<section class="lesson" id="l6" aria-labelledby="l6-h">
+  <div class="lesson-head"><span class="num">6</span><h2 id="l6-h">Responses and the fallback</h2></div>
+  <p class="goal">Goal: know which API to call, and what to do when a model says no.</p>
+
+  <p>The examples so far use the <strong>Responses API</strong>. It works with Azure OpenAI models and with the Foundry Models sold by Azure that support it, such as DeepSeek, Llama and Grok models.</p>
+  <p>Not every deployment supports it. When one doesn't, the request fails with <code>400 Model not supported</code>. The fix is to call the <strong>Chat Completions API</strong> through <code>client.chat.completions.create</code> on the same client. The request and the response are shaped differently:</p>
+
+  <figure class="code">
+    <figcaption><span>The same question through both APIs</span><button class="copy" data-copy="two_apis">Copy</button></figcaption>
+    <pre class="code numbered" data-code="two_apis" data-lang="py" id="two_apis"></pre>
+  </figure>
+
+  <div class="split">
+    <div>
+      <h4>Responses API</h4>
+      <ul><li>Send <code>input=</code>, a string.</li><li>Read <code>response.output_text</code>.</li></ul>
+    </div>
+    <div>
+      <h4>Chat Completions API</h4>
+      <ul><li>Send <code>messages=</code>, a list of role and content dictionaries.</li><li>Read <code>completion.choices[0].message.content</code>.</li></ul>
+    </div>
+  </div>
+  <p>In both calls, <code>model</code> is still the deployment name. The client, base URL and credential don't change.</p>
+
+  <div class="predict">
+    <p class="q">Predict: you call <code>responses.create</code> on a deployment that doesn't support it. Which Python exception does the <code>openai</code> SDK raise?</p>
+    <details><summary>Show answer</summary>
+      <p><code>openai.BadRequestError</code>, the SDK's exception for HTTP 400. You'll catch it in the lab. Catch it narrowly: a 400 can also mean a malformed request, so check that the message is about the model not being supported before falling back.</p>
+    </details>
+  </div>
+
+  <div class="done-row"><button class="mark" data-lesson="l6" aria-pressed="false">Mark lesson 6 done</button></div>
+</section>
+
+<!-- LESSON 7 -->
+<section class="lesson" id="l7" aria-labelledby="l7-h">
+  <div class="lesson-head"><span class="num">7</span><h2 id="l7-h">Lab: a reusable client</h2></div>
+  <p class="goal">Goal: one small module that combines everything, then use it to compare two models.</p>
+
+  <p>Work in the virtual environment from lesson 3. Try each task before opening the solution. Tick a task when your version runs.</p>
+
+  <div class="task" data-task="a">
+    <div class="task-top"><input type="checkbox" id="task-a" aria-label="Task A done"><div>
+      <h4>Task A: a client factory that picks its own auth</h4>
+      <p>Create <code>foundry_client.py</code> with a function <code>make_client()</code>. It reads the resource name from an environment variable (call it <code>FOUNDRY_RESOURCE</code>; the name is your choice, not an Azure convention). If <code>AZURE_INFERENCE_CREDENTIAL</code> is set, use the key. Otherwise use keyless authentication.</p>
+    </div></div>
+    <details><summary>Show a solution</summary>
+      <figure class="code">
+        <figcaption><span>foundry_client.py, part 1</span><button class="copy" data-copy="lab_a">Copy</button></figcaption>
+        <pre class="code numbered" data-code="lab_a" data-lang="py" id="lab_a"></pre>
+      </figure>
+      <p>Importing <code>azure.identity</code> inside the function means a key-only setup works even if that package isn't installed.</p>
+    </details>
+  </div>
+
+  <div class="task" data-task="b">
+    <div class="task-top"><input type="checkbox" id="task-b" aria-label="Task B done"><div>
+      <h4>Task B: ask, with a fallback</h4>
+      <p>Add <code>ask(client, deployment, prompt)</code> to the same file. Try the Responses API first. If the model isn't supported, retry through Chat Completions. Any other error should still raise.</p>
+    </div></div>
+    <details><summary>Show a solution</summary>
+      <figure class="code">
+        <figcaption><span>foundry_client.py, part 2</span><button class="copy" data-copy="lab_b">Copy</button></figcaption>
+        <pre class="code numbered" data-code="lab_b" data-lang="py" id="lab_b"></pre>
+      </figure>
+      <p>Line 9 re-raises any 400 that isn't about model support, so a real bug in your request isn't silently turned into a second call.</p>
+    </details>
+  </div>
+
+  <div class="task" data-task="c">
+    <div class="task-top"><input type="checkbox" id="task-c" aria-label="Task C done"><div>
+      <h4>Task C: same prompt, two models, no code changes</h4>
+      <p>Write <code>compare.py</code> that sends one prompt to every deployment in a list and prints each answer under its name. If you have only one deployment, create a second one first; it costs nothing until you call it.</p>
+    </div></div>
+    <details><summary>Show a solution</summary>
+      <figure class="code">
+        <figcaption><span>compare.py</span><button class="copy" data-copy="lab_c">Copy</button></figcaption>
+        <pre class="code numbered" data-code="lab_c" data-lang="py" id="lab_c"></pre>
+      </figure>
+      <p>This is the claim from lesson 1 made concrete: the models may come from different providers, and the only thing that differs between calls is a string.</p>
+    </details>
+  </div>
+
+  <div class="task" data-task="d">
+    <div class="task-top"><input type="checkbox" id="task-d" aria-label="Task D done"><div>
+      <h4>Task D (stretch): report which API answered</h4>
+      <p>Change <code>ask</code> to return a pair: the text, and either <code>"responses"</code> or <code>"chat"</code>. Update <code>compare.py</code> to print it. Then run with the key unset and confirm keyless still works.</p>
+    </div></div>
+    <details><summary>Show a hint</summary>
+      <p>Return <code>(response.output_text, "responses")</code> from the <code>try</code> block and <code>(completion.choices[0].message.content, "chat")</code> after the fallback. In <code>compare.py</code>, unpack with <code>text, api = ask(...)</code>. To test keyless, run <code>unset AZURE_INFERENCE_CREDENTIAL</code> (PowerShell: <code>Remove-Item Env:AZURE_INFERENCE_CREDENTIAL</code>).</p>
+    </details>
+  </div>
+
+  <div class="done-row"><button class="mark" data-lesson="l7" aria-pressed="false">Mark lesson 7 done</button></div>
+</section>
+
+<!-- LESSON 8 -->
+<section class="lesson" id="l8" aria-labelledby="l8-h">
+  <div class="lesson-head"><span class="num">8</span><h2 id="l8-h">Troubleshooting</h2></div>
+  <p class="goal">Goal: read an error and know where to look first.</p>
+
+  <p>Most first-run failures come from a short list. The exception names in the first column are the ones the <code>openai</code> and <code>azure-identity</code> packages raise.</p>
+  <div class="table-wrap">
+    <table class="trouble">
+      <thead><tr><th scope="col">What you see</th><th scope="col">Likely cause</th><th scope="col">What to check</th></tr></thead>
+      <tbody>
+        <tr><td>KeyError</td><td>The environment variable isn't set in this terminal session.</td><td>Set it again in the same terminal that runs Python.</td></tr>
+        <tr><td>AuthenticationError (401)</td><td>The key is wrong or was rotated, or a token was issued for the wrong scope.</td><td>Copy the key again. With keyless, confirm the scope is <code>https://ai.azure.com/.default</code>.</td></tr>
+        <tr><td>PermissionDeniedError (403)</td><td>Your identity signed in but has no permission to run inference on this resource.</td><td>Ask for the role assignment from the Entra ID guide. New assignments can take a few minutes to apply.</td></tr>
+        <tr><td>NotFoundError (404)</td><td>The deployment name has a typo, or the base URL is missing <code>/openai/v1/</code>.</td><td>Compare <code>model</code> with your deployment list, character by character. Check the end of <code>base_url</code>.</td></tr>
+        <tr><td>BadRequestError (400)<br>Model not supported</td><td>The deployment doesn't support the Responses API.</td><td>Call <code>client.chat.completions.create</code> instead, or use <code>ask</code> from the lab.</td></tr>
+        <tr><td>CredentialUnavailableError</td><td><code>DefaultAzureCredential</code> found no usable sign-in.</td><td>Run <code>az login</code>, then run your script from a new terminal.</td></tr>
+        <tr><td>APIConnectionError</td><td>The host name doesn't resolve, often because a full URL was pasted where only the resource name belongs.</td><td>Make sure the base URL contains the resource name once, with no extra <code>https://</code> inside it.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="predict">
+    <p class="q">Predict: keyless worked yesterday. Today you get <code>PermissionDeniedError</code> but your colleague's identical script works. What is the first thing you check?</p>
+    <details><summary>Show answer</summary>
+      <p>Which identity you are signed in as. <code>az account show</code> tells you. A 403 means authentication succeeded and authorization failed, so the code and URL are fine; the question is whether this identity, in this tenant, still has its role on the resource.</p>
+    </details>
+  </div>
+
+  <div class="done-row"><button class="mark" data-lesson="l8" aria-pressed="false">Mark lesson 8 done</button></div>
+</section>
+
+<!-- QUIZ -->
+<section class="lesson" id="quiz" aria-labelledby="quiz-h">
+  <div class="lesson-head"><span class="num"></span><h2 id="quiz-h">Knowledge check</h2></div>
+  <p class="goal" style="padding-left:0">Ten questions. Each one locks after you answer and tells you why.</p>
+  <div id="quiz-body"></div>
+  <p class="score" id="quiz-score" aria-live="polite"></p>
+  <button class="plain" id="quiz-reset">Reset the knowledge check</button>
+</section>
+
+<!-- CHEAT SHEET -->
+<section class="lesson" id="cheat" aria-labelledby="cheat-h">
+  <div class="lesson-head"><span class="num"></span><h2 id="cheat-h">Cheat sheet</h2></div>
+  <figure class="code">
+    <figcaption><span>The whole module in 20 lines</span><button class="copy" data-copy="cheat_code">Copy</button></figcaption>
+    <pre class="code numbered" data-code="cheat_code" data-lang="py" id="cheat_code"></pre>
+  </figure>
+  <div class="cheat">
+    <div>
+      <h4>Remember</h4>
+      <ul>
+        <li>A deployment is a named alias: model, version, capacity type, content filter, rate limit.</li>
+        <li>You pay for inference on deployments, not for having them.</li>
+        <li>Deployments are Azure resources, so Azure Policy applies.</li>
+        <li>v1 base URL: <code>https://&lt;resource&gt;.openai.azure.com/openai/v1/</code>, no <code>api-version</code>.</li>
+        <li>Deployment name goes in <code>model</code>.</li>
+      </ul>
+    </div>
+    <div>
+      <h4>Decide</h4>
+      <ul>
+        <li>Quick experiment on your own resource: API key in <code>AZURE_INFERENCE_CREDENTIAL</code>.</li>
+        <li>Anything shared or in production: keyless with <code>DefaultAzureCredential</code>.</li>
+        <li>Default to <code>responses.create</code>.</li>
+        <li>On <code>400 Model not supported</code>: <code>chat.completions.create</code>.</li>
+      </ul>
+    </div>
+  </div>
+  <h3>Where to go next</h3>
+  <ul>
+    <li><a href="https://learn.microsoft.com/en-us/azure/foundry/foundry-models/how-to/generate-responses">Generate text responses with Foundry Models</a></li>
+    <li><a href="https://learn.microsoft.com/en-us/azure/foundry/openai/api-version-lifecycle">Azure OpenAI v1 API and version lifecycle</a></li>
+    <li><a href="https://learn.microsoft.com/en-us/azure/foundry/foundry-models/concepts/deployment-types">Deployment types in Foundry Models</a></li>
+    <li><a href="https://learn.microsoft.com/en-us/azure/foundry/foundry-models/concepts/models-sold-directly-by-azure">Foundry Models sold directly by Azure</a></li>
+    <li><a href="https://learn.microsoft.com/en-us/azure/foundry/foundry-models/how-to/configure-entra-id">Configure keyless authentication with Entra ID</a></li>
+  </ul>
+</section>
+
+<footer>
+  <p>Based on <a href="https://learn.microsoft.com/en-us/azure/foundry/foundry-models/concepts/endpoints?tabs=python">Endpoints for Microsoft Foundry Models</a> on Microsoft Learn, Python tab, page last updated August 1, 2026. The explanations, predictions, lab and knowledge check were written for this module. Check the source page if Azure changes the API.</p>
+</footer>
+</main>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+var CODE = {
+setup_sh:
+`python3 -m venv .venv
+source .venv/bin/activate
+pip install --upgrade openai azure-identity`,
+
+setup_ps:
+`python -m venv .venv
+.venv\\Scripts\\Activate.ps1
+pip install --upgrade openai azure-identity`,
+
+env_sh:
+`# macOS or Linux
+export AZURE_INFERENCE_CREDENTIAL="paste-your-key-here"
+
+# Windows PowerShell
+$env:AZURE_INFERENCE_CREDENTIAL = "paste-your-key-here"`,
+
+key_call:
+`import os
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="https://<resource>.openai.azure.com/openai/v1/",
+    api_key=os.environ["AZURE_INFERENCE_CREDENTIAL"],
+)
+
+response = client.responses.create(
+    model="deepseek-v3-0324",  # your deployment name
+    input="In two sentences, what is a model deployment?",
+)
+
+print(response.output_text)`,
+
+keyless_call:
+`from openai import OpenAI
+from azure.identity import DefaultAzureCredential, get_bearer_token_provider
+
+token_provider = get_bearer_token_provider(
+    DefaultAzureCredential(),
+    "https://ai.azure.com/.default",
+)
+
+client = OpenAI(
+    base_url="https://<resource>.openai.azure.com/openai/v1/",
+    api_key=token_provider,
+)
+
+response = client.responses.create(
+    model="deepseek-v3-0324",  # your deployment name
+    input="In two sentences, what is a model deployment?",
+)
+
+print(response.output_text)`,
+
+two_apis:
+`# Responses API: the default
+response = client.responses.create(
+    model="deepseek-v3-0324",
+    input="Name three uses for a vector database.",
+)
+print(response.output_text)
+
+# Chat Completions API: the fallback
+completion = client.chat.completions.create(
+    model="deepseek-v3-0324",
+    messages=[{"role": "user", "content": "Name three uses for a vector database."}],
+)
+print(completion.choices[0].message.content)`,
+
+lab_a:
+`import os
+from openai import OpenAI, BadRequestError
+
+
+def make_client() -> OpenAI:
+    resource = os.environ["FOUNDRY_RESOURCE"]
+    base_url = f"https://{resource}.openai.azure.com/openai/v1/"
+
+    key = os.environ.get("AZURE_INFERENCE_CREDENTIAL")
+    if key:
+        return OpenAI(base_url=base_url, api_key=key)
+
+    from azure.identity import DefaultAzureCredential, get_bearer_token_provider
+    token_provider = get_bearer_token_provider(
+        DefaultAzureCredential(),
+        "https://ai.azure.com/.default",
+    )
+    return OpenAI(base_url=base_url, api_key=token_provider)`,
+
+lab_b:
+`def ask(client: OpenAI, deployment: str, prompt: str) -> str:
+    try:
+        response = client.responses.create(model=deployment, input=prompt)
+        return response.output_text
+    except BadRequestError as err:
+        # Fall back only when the model can't use the Responses API.
+        # Any other 400 is a real problem with the request.
+        if "not supported" not in str(err).lower():
+            raise
+    completion = client.chat.completions.create(
+        model=deployment,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    return completion.choices[0].message.content`,
+
+lab_c:
+`from foundry_client import make_client, ask
+
+client = make_client()
+
+deployments = ["deepseek-v3-0324", "your-second-deployment"]
+prompt = "In one sentence, why do teams use keyless authentication?"
+
+for name in deployments:
+    print(f"--- {name} ---")
+    print(ask(client, name, prompt))
+    print()`,
+
+cheat_code:
+`import os
+from openai import OpenAI
+from azure.identity import DefaultAzureCredential, get_bearer_token_provider
+
+BASE_URL = "https://<resource>.openai.azure.com/openai/v1/"  # no api-version
+
+# Quick experiments: key from the environment
+key_client = OpenAI(base_url=BASE_URL, api_key=os.environ["AZURE_INFERENCE_CREDENTIAL"])
+
+# Production: keyless with Entra ID
+token_provider = get_bearer_token_provider(DefaultAzureCredential(), "https://ai.azure.com/.default")
+client = OpenAI(base_url=BASE_URL, api_key=token_provider)
+
+# Default: Responses API
+r = client.responses.create(model="deepseek-v3-0324", input="Hello")
+print(r.output_text)
+
+# On 400 Model not supported: Chat Completions
+c = client.chat.completions.create(model="deepseek-v3-0324", messages=[{"role": "user", "content": "Hello"}])
+print(c.choices[0].message.content)`
+};
+
+var KW = new Set(["import","from","as","def","return","try","except","if","not","in","raise","for","None","True","False","else","elif","with","is","and","or","print"]);
+function esc(s){ return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+
+function hlPy(src){
+  var re = /(#[^\n]*)|(f?"(?:[^"\\\n]|\\.)*"|f?'(?:[^'\\\n]|\\.)*')|\b([A-Za-z_]\w*)\b|\b(\d+)\b/g;
+  var out = "", last = 0, m;
+  while ((m = re.exec(src))) {
+    out += esc(src.slice(last, m.index));
+    if (m[1]) out += '<span class="t-com">' + esc(m[1]) + "</span>";
+    else if (m[2]) out += '<span class="t-str">' + esc(m[2]) + "</span>";
+    else if (m[3]) {
+      var w = m[3];
+      if (KW.has(w)) out += '<span class="t-kw">' + w + "</span>";
+      else if (src.charAt(re.lastIndex) === "(") out += '<span class="t-fn">' + w + "</span>";
+      else out += esc(w);
+    }
+    else if (m[4]) out += '<span class="t-num">' + m[4] + "</span>";
+    last = re.lastIndex;
+  }
+  return out + esc(src.slice(last));
+}
+function hlSh(src){
+  return src.split("\n").map(function(line){
+    var i = line.indexOf("#");
+    if (i === -1) return esc(line);
+    return esc(line.slice(0,i)) + '<span class="t-com">' + esc(line.slice(i)) + "</span>";
+  }).join("\n");
+}
+function markSegments(html){
+  return html
+    .split("&lt;resource&gt;").join('<span class="seg-res">&lt;resource&gt;</span>')
+    .split("{resource}").join('<span class="seg-res">{resource}</span>')
+    .split("/openai/v1/").join('<span class="seg-route">/openai/v1/</span>')
+    .split("deepseek-v3-0324").join('<span class="seg-dep">deepseek-v3-0324</span>');
+}
+function toLines(html){
+  return html.split("\n").map(function(l){ return '<span class="ln">' + (l || " ") + "</span>"; }).join("");
+}
+function render(pre, src, lang){
+  var html = lang === "py" ? markSegments(hlPy(src)) : hlSh(src);
+  pre.innerHTML = toLines(html);
+  pre.dataset.raw = src;
+}
+
+document.querySelectorAll("pre[data-code]").forEach(function(pre){
+  render(pre, CODE[pre.dataset.code], pre.dataset.lang);
+});
+
+/* Copy buttons */
+document.addEventListener("click", function(e){
+  var btn = e.target.closest("button.copy");
+  if (!btn) return;
+  var pre = document.getElementById(btn.dataset.copy);
+  var text = pre ? pre.dataset.raw : "";
+  var done = function(msg){ btn.textContent = msg; setTimeout(function(){ btn.textContent = "Copy"; }, 1800); };
+  try {
+    navigator.clipboard.writeText(text).then(function(){ done("Copied"); }, function(){ selectPre(pre); done("Press Ctrl+C"); });
+  } catch (err) { selectPre(pre); done("Press Ctrl+C"); }
+});
+function selectPre(pre){
+  try { var r = document.createRange(); r.selectNodeContents(pre); var s = window.getSelection(); s.removeAllRanges(); s.addRange(r); } catch (e) {}
+}
+
+/* URL builder */
+var bRes = document.getElementById("b-res"), bDep = document.getElementById("b-dep"),
+    bOut = document.getElementById("b-out"), bWarn = document.getElementById("b-warn");
+function buildCode(){
+  var raw = bRes.value.trim(), warn = "", res = raw;
+  var urlMatch = raw.match(/^https?:\/\/([^.\/]+)\./i);
+  if (urlMatch) { res = urlMatch[1]; warn = "You pasted a full URL. Using only the resource name: " + res; }
+  else if (/[.\/:]/.test(raw)) { warn = "Enter only the resource name, with no dots, slashes or https://."; }
+  if (!res) res = "<resource>";
+  var dep = bDep.value.trim() || "deepseek-v3-0324";
+  if (/\s/.test(dep)) warn = "Deployment names don't contain spaces. Check the name in your resource.";
+  var auth = document.querySelector('input[name="b-auth"]:checked').value;
+
+  var src;
+  if (auth === "key") {
+    src = 'import os\nfrom openai import OpenAI\n\nclient = OpenAI(\n    base_url="https://\u27e6R\u27e7.openai.azure.com/openai/v1/",\n    api_key=os.environ["AZURE_INFERENCE_CREDENTIAL"],\n)\n\nresponse = client.responses.create(\n    model="\u27e6D\u27e7",\n    input="Say hello in five words.",\n)\nprint(response.output_text)';
+  } else {
+    src = 'from openai import OpenAI\nfrom azure.identity import DefaultAzureCredential, get_bearer_token_provider\n\ntoken_provider = get_bearer_token_provider(\n    DefaultAzureCredential(),\n    "https://ai.azure.com/.default",\n)\n\nclient = OpenAI(\n    base_url="https://\u27e6R\u27e7.openai.azure.com/openai/v1/",\n    api_key=token_provider,\n)\n\nresponse = client.responses.create(\n    model="\u27e6D\u27e7",\n    input="Say hello in five words.",\n)\nprint(response.output_text)';
+  }
+  var html = hlPy(src)
+    .split("/openai/v1/").join('<span class="seg-route">/openai/v1/</span>')
+    .split("\u27e6R\u27e7").join('<span class="seg-res">' + esc(res) + "</span>")
+    .split("\u27e6D\u27e7").join('<span class="seg-dep">' + esc(dep) + "</span>");
+  bOut.innerHTML = toLines(html);
+  bOut.dataset.raw = src.split("\u27e6R\u27e7").join(res).split("\u27e6D\u27e7").join(dep);
+  bWarn.textContent = warn;
+}
+[bRes, bDep].forEach(function(el){ el.addEventListener("input", buildCode); });
+document.querySelectorAll('input[name="b-auth"]').forEach(function(el){ el.addEventListener("change", buildCode); });
+buildCode();
+
+/* Progress state */
+var KEY = "foundry-endpoints-python-module-v1";
+var state = { lessons:{}, tasks:{} };
+try { var saved = localStorage.getItem(KEY); if (saved) { var p = JSON.parse(saved); state.lessons = p.lessons || {}; state.tasks = p.tasks || {}; } } catch (e) {}
+function save(){ try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
+
+function paintProgress(){
+  var ids = ["l1","l2","l3","l4","l5","l6","l7","l8"], n = 0;
+  ids.forEach(function(id){
+    var done = !!state.lessons[id]; if (done) n++;
+    var chk = document.querySelector('[data-chk="' + id + '"]'); if (chk) chk.textContent = done ? "\u2713" : "";
+    var btn = document.querySelector('button.mark[data-lesson="' + id + '"]');
+    if (btn) { btn.setAttribute("aria-pressed", done ? "true" : "false"); btn.textContent = done ? "Lesson " + id.slice(1) + " done" : "Mark lesson " + id.slice(1) + " done"; }
+  });
+  document.getElementById("progress-text").textContent = n + " of 8 lessons done";
+  document.getElementById("progress-bar").style.width = (n / 8 * 100) + "%";
+}
+document.querySelectorAll("button.mark").forEach(function(btn){
+  btn.addEventListener("click", function(){ var id = btn.dataset.lesson; state.lessons[id] = !state.lessons[id]; save(); paintProgress(); });
+});
+document.querySelectorAll(".task").forEach(function(task){
+  var id = task.dataset.task, box = task.querySelector('input[type="checkbox"]');
+  box.checked = !!state.tasks[id]; task.classList.toggle("done", box.checked);
+  box.addEventListener("change", function(){ state.tasks[id] = box.checked; task.classList.toggle("done", box.checked); save(); });
+});
+paintProgress();
+
+/* Quiz */
+var QUIZ = [
+  { q:"In a v1 request, where does the deployment name go?",
+    o:["In the base URL path, after /deployments/","In the model argument of the request","In the api-version query parameter","In an HTTP header named deployment"], a:1,
+    why:"With the v1 route, the base URL points at the resource and the deployment name is sent as model. That is what lets one client reach every deployment." },
+  { q:"Which of these is not part of what a deployment defines?",
+    o:["The model version","The content filtering configuration","The version of the openai Python package","The rate limiting configuration"], a:2,
+    why:"A deployment defines model name, model version, capacity type, content filtering and rate limits. The SDK version lives in your environment, not in Azure." },
+  { q:"What is the correct v1 base URL for a resource named ops-ai?",
+    o:["https://ops-ai.openai.azure.com/openai/v1/","https://ops-ai.openai.azure.com/openai/v1/?api-version=2024-10-21","https://openai.azure.com/ops-ai/v1/","https://ops-ai.openai.azure.com/deployments/openai/v1/"], a:0,
+    why:"Resource name as the subdomain, then /openai/v1/. The v1 route uses implicit versioning, so an api-version parameter doesn't belong there." },
+  { q:"Why doesn't code using /openai/v1/ pass an api-version?",
+    o:["Because api-version is only needed with keyless authentication","Because the v1 route uses implicit versioning","Because the OpenAI class adds it automatically","Because the Responses API ignores versions"], a:1,
+    why:"The v1 route is versioned implicitly, which is why the plain OpenAI client works against it without Azure-specific version handling." },
+  { q:"When do you pay for a model deployment?",
+    o:["Monthly, for each deployment that exists","When you create the deployment","For inference performed on the deployment","Only when you exceed the rate limit"], a:2,
+    why:"You pay for inference run on deployments. Creating a deployment to try a model costs nothing until you call it." },
+  { q:"In the keyless example, what is passed as api_key?",
+    o:["The string returned by az login","A DefaultAzureCredential object","A function that returns a bearer token","The resource's primary key"], a:2,
+    why:"get_bearer_token_provider returns a callable. The SDK calls it to get a valid token, so your code never handles token expiry." },
+  { q:"Which token scope does the keyless example request?",
+    o:["https://management.azure.com/.default","https://ai.azure.com/.default","https://cognitiveservices.azure.com/","https://openai.azure.com/v1"], a:1,
+    why:"The example passes https://ai.azure.com/.default to get_bearer_token_provider. A token for another scope would be rejected." },
+  { q:"responses.create returns 400 Model not supported. What should you do?",
+    o:["Add an api-version parameter and retry","Switch to API key authentication","Call client.chat.completions.create with the same deployment","Create a new Foundry resource"], a:2,
+    why:"That error means the deployment doesn't support the Responses API. Chat Completions on the same client and deployment is the documented fallback." },
+  { q:"Which is a reason Microsoft gives for preferring keyless authentication in production?",
+    o:["Keys make requests slower","A key grants full access to the resource and is hard to scope","Keys don't work with the Responses API","Keys only work for OpenAI models"], a:1,
+    why:"API keys give full resource access, can't easily be scoped to users or actions, and need manual rotation. Keyless ties access to identities you can manage." },
+  { q:"What happens when this line runs and the variable isn't set?\napi_key=os.environ[\"AZURE_INFERENCE_CREDENTIAL\"]",
+    o:["The SDK sends the request with no key and gets a 401","Python raises KeyError before any request is sent","DefaultAzureCredential is used instead","api_key becomes None and the call succeeds"], a:1,
+    why:"Indexing os.environ with a missing name raises KeyError immediately. Nothing reaches Azure, and there is no automatic switch to keyless unless you write one, as in the lab." }
+];
+var qBody = document.getElementById("quiz-body"), qScore = document.getElementById("quiz-score"), qChk = document.getElementById("quiz-chk");
+var answers = {};
+function renderQuiz(){
+  answers = {};
+  qBody.innerHTML = "";
+  QUIZ.forEach(function(item, i){
+    var wrap = document.createElement("div"); wrap.className = "quiz-q";
+    var fs = document.createElement("fieldset");
+    var lg = document.createElement("legend");
+    var qn = document.createElement("span"); qn.className = "qn"; qn.textContent = (i+1) + " of " + QUIZ.length;
+    lg.appendChild(qn);
+    var parts = item.q.split("\n");
+    lg.appendChild(document.createTextNode(parts[0]));
+    if (parts[1]) { var c = document.createElement("code"); c.style.display = "block"; c.style.marginTop = ".4rem"; c.style.whiteSpace = "pre-wrap"; c.textContent = parts[1]; lg.appendChild(c); }
+    fs.appendChild(lg);
+    item.o.forEach(function(text, j){
+      var lab = document.createElement("label"); lab.className = "opt";
+      var inp = document.createElement("input"); inp.type = "radio"; inp.name = "q" + i; inp.value = j;
+      var span = document.createElement("span"); span.textContent = text;
+      lab.appendChild(inp); lab.appendChild(span); fs.appendChild(lab);
+      inp.addEventListener("change", function(){ answer(i, j, fs, why); });
+    });
+    var why = document.createElement("p"); why.className = "why";
+    fs.appendChild(why);
+    wrap.appendChild(fs); qBody.appendChild(wrap);
+  });
+  paintScore();
+}
+function answer(i, j, fs, why){
+  if (answers[i] !== undefined) return;
+  answers[i] = j;
+  var right = QUIZ[i].a;
+  var labels = fs.querySelectorAll(".opt");
+  labels.forEach(function(lab, k){
+    lab.querySelector("input").disabled = true;
+    if (k === right) lab.classList.add("correct");
+    else if (k === j) lab.classList.add("wrong");
+  });
+  why.innerHTML = (j === right ? '<strong class="ok">Correct.</strong> ' : '<strong class="no">Not this one.</strong> ') + esc(QUIZ[i].why);
+  why.classList.add("show");
+  paintScore();
+}
+function paintScore(){
+  var n = Object.keys(answers).length, c = 0;
+  Object.keys(answers).forEach(function(k){ if (answers[k] === QUIZ[k].a) c++; });
+  if (n === 0) { qScore.textContent = ""; qChk.textContent = ""; return; }
+  if (n < QUIZ.length) { qScore.textContent = c + " correct out of " + n + " answered."; qChk.textContent = ""; return; }
+  var msg = c + " of " + QUIZ.length + " correct. ";
+  msg += c >= 8 ? "You're ready to use this in real code." : "Revisit the lessons behind the questions you missed, then reset and try again.";
+  qScore.textContent = msg;
+  qChk.textContent = c >= 8 ? "\u2713" : "";
+}
+document.getElementById("quiz-reset").addEventListener("click", renderQuiz);
+renderQuiz();
+})();
+</script>
+</body>
+</html>
